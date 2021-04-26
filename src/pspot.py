@@ -1,6 +1,6 @@
 import numpy as np
 
-def allocate(pseudopotential, model):
+def allocate(currentParams, pseudopotential, model):
     lmax = 4
 
     pseudopotential.ID = 0
@@ -48,7 +48,7 @@ def allocate(pseudopotential, model):
     pseudopotential.D0 = np.zeros((model.num_projectors, model.num_projectors))
 
     # Assume the pseudopotential does not include spin orbit coupling unless otherwise specified.
-    pseudopotential.SOC = False #current_params % spin_orbit_coupling
+    pseudopotential.SOC = currentParams.SOC
 
     # Angular momentum, l, for each projector.
     pseudopotential.projector_l = np.zeros(model.num_projectors, dtype=int)
@@ -196,11 +196,11 @@ def allocate(pseudopotential, model):
     # The ELNES augmentation term.
     pseudopotential.bl_elnes_aug = np.zeros((model.num_core_projectors, model.num_bl_projectors))
 
-    # Just LDA for now.
-    pseudopotential.theory = 'LDA'
+    # Just LDA and PBE for now.
+    pseudopotential.theory = currentParams.xc_definition
 
     # Just Schroedinger for now.
-    pseudopotential.atomic_solver = 'sh'
+    pseudopotential.atomic_solver = currentParams.relativistic_treatment
 
 
 

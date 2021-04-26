@@ -193,3 +193,34 @@ def generate_psp(currentCell: cell.UnitCell, model: otfg.Model, pseudopotential:
 
     # Do the all electron calculation for the reference atom.
     scf.cycle(currentCell, ab, aeat)
+
+    # Make the ZORA K function.
+    # Don't need this just yet as only have Schroedinger solver for now.
+
+    # Define the pseudopotential to be generated.
+    #define(ab, aeat, pseudopotential)
+
+    # Construct the pseudopotential.
+    #construct(ab, aeat, pseudopotential)
+
+    # Descreen the pseudopotential.
+    #descreen(ab, aeat, pseudopotential)
+
+    # Write out generated potential.
+    #output(ab, aeat, pseudopotential)
+
+
+
+
+def define(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
+    pass
+
+def construct(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
+    pass
+
+def descreen(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
+    pass
+
+def output(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
+    pass
+

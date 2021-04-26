@@ -7,25 +7,16 @@
 #                  Author: Ava Dean, University of Oxford, 2021                  #
 #================================================================================#
 
-# Python modules.
-import sys
-
 # otfg modules.
 import cell
 import generate
 import otfg
+import parameters
 import pspot
 
+currentParams = parameters.get_arguments()
 
-try:
-    element = sys.argv[1]
-except IndexError:
-    print('Please enter a system prefix.')
-    sys.exit(1)
-else:
-    element = element.strip().upper()
-
-currentCell = cell.UnitCell(element)
+currentCell = cell.UnitCell(currentParams.element)
 model = otfg.Model()
 
 soc = False # No spin orbit coupling for now.
@@ -40,7 +31,8 @@ currentCell.ionicCharge = model.ionic_charge
 pseudopotential = pspot.Pseudopotential()
 
 # Allocate variables needed for pseudopotential.
-pspot.allocate(pseudopotential, model)
+pspot.allocate(currentParams, pseudopotential, model)
 
 # Generate the pseudopotential.
 generate.generate_psp(currentCell, model, pseudopotential)
+

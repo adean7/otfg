@@ -545,6 +545,9 @@ class AllElectronAtom:
             vxc /= 2.0  # Convert to Hartrees.
             exc /= 2.0  # Convert to Hartrees.
 
+        elif self.theory == 'PBE':
+            pass
+
         else:
             io.abort('XC functional theory {} not known/implemented.'.format(self.theory))
 
