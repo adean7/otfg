@@ -5,6 +5,7 @@ import basis
 import cell
 import data
 import input_output as io
+import kernels
 import pspot
 import solvers
 
@@ -505,6 +506,7 @@ class AllElectronAtom:
         rho[iexp:] = aexp * np.exp(bexp * ab.r[iexp:])
 
         work = np.zeros(ab.npts)
+        dv_dn = np.zeros(ab.npts)
 
         if self.theory == 'LDA':
             # The LDA of Ceperley-Alder
@@ -534,7 +536,8 @@ class AllElectronAtom:
                     vcp = -0.2846 * te / be ** 2.0
                 else:
                     ecp = 2.0 * ((0.0311 + 0.002 * rs) * np.log(rs) - 0.048 - 0.0116 * rs)
-                    vcp = 2.0 * ((0.0311 + 2.0 / 3.0 * 0.002 * rs) * np.log(rs) - (0.048 + 0.0311 / 3.0) - (2.0 / 3.0 * 0.0116 + 0.002 / 3.0) * rs)
+                    vcp = 2.0 * ((0.0311 + 2.0 / 3.0 * 0.002 * rs) * np.log(rs) - (0.048 + 0.0311 / 3.0) -
+                                 (2.0 / 3.0 * 0.0116 + 0.002 / 3.0) * rs)
 
                 vxc[n] = vxp + vcp
                 work[n] = exxp + ecp
@@ -546,7 +549,54 @@ class AllElectronAtom:
             exc /= 2.0  # Convert to Hartrees.
 
         elif self.theory == 'PBE':
-            pass
+            rho /= 4.0 * np.pi      # The XC routines derive from a non-radial form
+
+            basis.real_derivative(ab, rho, grad)
+
+            mod_grad = np.abs(grad)
+
+            for n in range(ab.npts):
+                work[n], vxc[n], dv_dn[n] = kernels.pbe_point(rho[n], mod_grad[n])
+
+                if mod_grad[n] > 0.0:
+                    dv_dn[n] *= -1.0 * grad[n] / mod_grad[n]
+                else:
+                    dv_dn[n] = 0.0
+
+            # Add the gradient corrections to the potential.
+            basis.real_derivative(ab, dv_dn, grad)
+
+            grad[1:] += 2.0 * dv_dn[1:] / ab.r[1:]
+
+            vxc += grad
+
+            # Calculate the eigenvalue correction energy.
+            exc = -1.0 * basis.radin(ab.npts, ab.rab, vxc * self.rhorr - work * ab.r ** 2.0 * 4.0 * np.pi)
+
+        elif self.theory == 'BLYP':
+            rho /= 4.0 * np.pi  # The XC routines derive from a non-radial form
+
+            basis.real_derivative(ab, rho, grad)
+
+            mod_grad = np.abs(grad)
+
+            for n in range(ab.npts):
+                work[n], vxc[n], dv_dn[n] = kernels.blyp_point(rho[n], mod_grad[n])
+
+                if mod_grad[n] > 0.0:
+                    dv_dn[n] *= -1.0 * grad[n] / mod_grad[n]
+                else:
+                    dv_dn[n] = 0.0
+
+            # Add the gradient corrections to the potential.
+            basis.real_derivative(ab, dv_dn, grad)
+
+            grad[1:] += 2.0 * dv_dn[1:] / ab.r[1:]
+
+            vxc += grad
+
+            # Calculate the eigenvalue correction energy.
+            exc = -1.0 * basis.radin(ab.npts, ab.rab, vxc * self.rhorr - work * ab.r ** 2.0 * 4.0 * np.pi)
 
         else:
             io.abort('XC functional theory {} not known/implemented.'.format(self.theory))

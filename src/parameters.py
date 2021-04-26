@@ -38,6 +38,8 @@ class Params:
                 self.xc_definition = 'LDA'
             elif args.functional.upper() == 'PBE':
                 self.xc_definition = 'PBE'
+            elif args.functional.upper() == 'BLYP':
+                self.xc_definition = 'BLYP'
             else:
                 io.abort('XC functional {} not known/implemented.'.format(args.functional))
         else:
