@@ -121,9 +121,9 @@ class AllElectronAtom:
 
     def init_H(self, ab: basis.AllElectronBasis):
         if self.SOC:
-            pass # Set occupancies for spin orbit coupling calculation.
+            io.abort('SOC not yet supported.')
         else:
-            self.set_ae_occ(ab)
+            self.set_occ(ab)
 
         # Establish an analytic starting potential.
         for n in range(ab.npts):
@@ -147,7 +147,7 @@ class AllElectronAtom:
             tt = zeff * (1.0 - 1.0 / (drng * yy * (np.exp(tt) - 1.0) + 1.0))
             self.V_eff[n] = tt + self.V_nuc[n]
 
-    def set_ae_occ(self, ab: basis.AllElectronBasis):
+    def set_occ(self, ab: basis.AllElectronBasis):
         if self.Z == 0:
             self.config = ' '
             # self.occ already zeroed
@@ -156,21 +156,12 @@ class AllElectronAtom:
         # Analyse the configuration.
         self.norbs = np.zeros(ab.lmax + 1, dtype=int)
         self.config = data.gs_config.get(self.Z)
-        no2cf = np.zeros((ab.lmax + 1, 10), dtype=int)
+        no2cf = np.zeros((10, ab.lmax + 1), dtype=int)
         for i in range(len(self.cfg_occ)):
             if self.cfg_occ[i] > 0.0:
-                if data.gs_occ.get(0)[i] % 10 == 0:
-                    self.norbs[0] += 1
-                    no2cf[0,self.norbs[0]] = i+1
-                elif data.gs_occ.get(0)[i] % 10 == 1:
-                    self.norbs[1] += 1
-                    no2cf[1,self.norbs[1]] = i+1
-                elif data.gs_occ.get(0)[i] % 10 == 2:
-                    self.norbs[2] += 1
-                    no2cf[2,self.norbs[2]] = i+1
-                elif data.gs_occ.get(0)[i] % 10 == 3:
-                    self.norbs[3] += 1
-                    no2cf[3,self.norbs[3]] = i+1
+                l = data.gs_occ.get(0)[i] % 10
+                self.norbs[l] += 1
+                no2cf[self.norbs[l]-1,l] = i+1
 
         # Set the occupations.
         num = [0, 0, 0, 0] # Number of s, p, d, f angular momentum channels.
@@ -179,22 +170,22 @@ class AllElectronAtom:
                 l = data.gs_occ.get(0)[i] % 10
                 num[l] += 1
                 if num[l] > self.norbmax:
-                    io.abort('num(l) > aeat%norbmx')
+                    io.abort('num(l) > aeat.norbmx')
                 self.occ[num[l]-1,l] = self.cfg_occ[i]
 
         # Hydrogenic(ish) energy levels as a first guess (a fudged screening).
-        nmax=0
-        for l in range(ab.lmax):
-            for nob in range(1,self.norbs[l]+1):
-                n = data.gs_occ.get(0)[no2cf[l,nob]] // 10
+        nmax = 0
+        for l in range(ab.lmax+1):
+            for nob in range(self.norbs[l]):
+                n = data.gs_occ.get(0)[no2cf[nob,l]-1] // 10
                 if n > nmax:
                     nmax = n
 
-        for l in range(ab.lmax):
-            for nob in range(1,self.norbs[l]+1):
-                n = data.gs_occ.get(0)[no2cf[l,nob-1]] // 10
-                self.orb_n[nob-1,l] = n
-                self.eval[nob-1,l]  = -(1.0 + self.Z - 0.9 * self.Z / float(nmax) * float(n)) ** 2.0 / float(n) ** 2.0 / 2.0
+        for l in range(ab.lmax+1):
+            for nob in range(self.norbs[l]):
+                n = data.gs_occ.get(0)[no2cf[nob,l]-1] // 10
+                self.orb_n[nob,l] = n
+                self.eval[nob,l]  = -(1.0 + self.Z - 0.9 * self.Z / float(nmax) * float(n)) ** 2.0 / float(n) ** 2.0 / 2.0
 
     def schroedinger_solve(self, ab: basis.AllElectronBasis):
         #      integer       :: i,l,no,niter
