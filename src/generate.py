@@ -3,6 +3,7 @@ import cell
 import data
 import input_output as io
 import otfg
+import parameters
 import pspot
 import scf
 
@@ -164,7 +165,8 @@ def inquire(currentCell, model, soc):
 
 
 
-def generate_psp(currentCell: cell.UnitCell, model: otfg.Model, pseudopotential: pspot.Pseudopotential):
+def generate_psp(currentParams: parameters.Params, currentCell    :  cell.UnitCell,
+                 model        :       otfg.Model , pseudopotential: pspot.Pseudopotential):
     Z = model.Z
     definition = currentCell.speciesPot
 
@@ -192,7 +194,7 @@ def generate_psp(currentCell: cell.UnitCell, model: otfg.Model, pseudopotential:
     aeat.fin_nuc = True if aeat.atomic_solver in ['kh', 'sh'] else False
 
     # Do the all electron calculation for the reference atom.
-    scf.cycle(currentCell, ab, aeat)
+    scf.cycle(currentParams, currentCell, ab, aeat)
 
     # Make the ZORA K function.
     # Don't need this just yet as only have Schroedinger solver for now.

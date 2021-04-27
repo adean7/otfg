@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import data
 import input_output as io
@@ -18,11 +19,13 @@ def get_arguments():
 
 
 class Params:
-    element = None
-    energy_unit = 'eV'
-    xc_definition = 'PBE'
+    element                = None
+    energy_unit            = 'eV'
+    xc_definition          = 'PBE'
     relativistic_treatment = 'sh'
-    SOC = False
+    SOC                    = False
+
+    start_time             = time.time()
 
     def __init__(self, args):
         if args.element:

@@ -31,8 +31,8 @@ currentCell.ionicCharge = model.ionic_charge
 pseudopotential = pspot.Pseudopotential()
 
 # Allocate variables needed for pseudopotential.
-pspot.allocate(currentParams, pseudopotential, model)
+pseudopotential.allocate(currentParams, model)
 
 # Generate the pseudopotential.
-generate.generate_psp(currentCell, model, pseudopotential)
+generate.generate_psp(currentParams, currentCell, model, pseudopotential)
 

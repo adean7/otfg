@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 import algor
@@ -6,6 +8,7 @@ import cell
 import data
 import input_output as io
 import kernels
+import parameters
 import pspot
 import solvers
 
@@ -608,7 +611,8 @@ class AllElectronAtom:
 
 
 
-def cycle(currentCell:cell.UnitCell, ab: basis.AllElectronBasis, aeat: AllElectronAtom):
+def cycle(currentParams: parameters.Params, currentCell:cell.UnitCell,
+          ab: basis.AllElectronBasis, aeat: AllElectronAtom):
     energy_tol = 1.0E-10
     mixing = 0.4
 
@@ -668,4 +672,5 @@ def cycle(currentCell:cell.UnitCell, ab: basis.AllElectronBasis, aeat: AllElectr
         print('| The atomic energy is {:>9.3f} {:>3}'.format(etot_eV, energy_label))
 
     print('\===============================================================->')
+    print('\nTime of run: {:>9.3f} s.'.format(time.time() - currentParams.start_time))
 
