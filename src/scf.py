@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 
 import algor
@@ -204,6 +202,9 @@ class AllElectronAtom:
         #      real(kind=dp) :: yval(-1:+1)
         #      real(kind=dp) :: aa,bb,Z
 
+        if not self.fin_nuc:
+            io.abort('schroedinger_solve: Must be a finite nucleus')
+
         solver_thresh = 1.0E-10
         max_solve = 1000
         yval = np.zeros(3)
@@ -270,16 +271,20 @@ class AllElectronAtom:
                     # aa = - z / (l+1)
                     # bb = ( 2 * z * z / (l+1) + v(0) - e ) / (4*l + 6)
 
-                    if self.fin_nuc:
-                        Z = 0.0
+                    '''
+                    Z = 0.0
 
-                        vzero = 2.0 * self.V_eff[1] / ab.r[1]
-                        aa = - Z / float(l + 1)
-                        bb = ((2.0 * Z ** 2.0 / float(l+1)) + vzero - ecur) / float(4 * l + 6)
+                    vzero = 2.0 * self.V_eff[1] / ab.r[1]
+                    aa = - Z / float(l + 1)
+                    bb = ((2.0 * Z ** 2.0 / float(l+1)) + vzero - ecur) / float(4 * l + 6)
 
-                        yy[0:3] = ab.r[0:3] ** float(l + 1) * (1.0 + aa * ab.r[0:3] + bb * ab.r[0:3] ** 2.0)
-                    else:
-                        io.abort('schroedinger_solve: Must be a finite nucleus')
+                    yy[0:3] = ab.r[0:3] ** float(l + 1) * (1.0 + aa * ab.r[0:3] + bb * ab.r[0:3] ** 2.0)
+                    '''
+
+                    vzero = 2.0 * self.V_eff[1] / ab.r[1]
+                    bb = (vzero - ecur) / float(4 * l + 6)
+
+                    yy[0:3] = ab.r[0:3] ** float(l + 1) * (1.0 + bb * ab.r[0:3] ** 2.0)
 
                     # Convert to the phi function.
                     yy[0] = yy[0] / ab.sqr[0]
@@ -433,11 +438,10 @@ class AllElectronAtom:
 
         self.etot += Ehar + Exc
 
-
     def hartree(self, ab, vhar, nrc=None, Vrc=None):
         work1 = np.zeros(ab.npts)
         work2 = np.zeros(ab.npts)
-        func  = np.zeros(ab.npts)
+        func = np.zeros(ab.npts)
 
         v1 = basis.radin(ab.npts, ab.rab, 2.0 * self.rhorr, inter=work1)
 
@@ -451,8 +455,8 @@ class AllElectronAtom:
 
         ehar = -1.0 * basis.radin(ab.npts, ab.rab, vhar * self.rhorr) / 2.0
 
-        vhar /= 2.0     # Convert to Hartrees.
-        ehar /= 2.0     # Convert to Hartrees.
+        vhar /= 2.0  # Convert to Hartrees.
+        ehar /= 2.0  # Convert to Hartrees.
 
         if nrc is not None:
             if Vrc is None:
@@ -501,7 +505,7 @@ class AllElectronAtom:
         iexp = min(iexp, ab.npts - 1)
 
         grad = np.zeros(ab.npts)
-        basis.real_derivative(ab, rho, grad)
+        basis.real_derivative(ab.npts, ab.rab, rho, grad)
 
         bexp = (grad[iexp] / rho[iexp] + grad[iexp-1] / rho[iexp-1] + grad[iexp+1] / rho[iexp+1]) / 3.0
         aexp = rho[iexp] / np.exp(bexp * ab.r[iexp])
@@ -513,37 +517,9 @@ class AllElectronAtom:
 
         if self.theory == 'LDA':
             # The LDA of Ceperley-Alder
+
             for n in range(ab.npts):
-                if rho[n] / (4.0 * np.pi) <= 1.0E-21:
-                    vxc[n] = 0.0
-                    work[n] = 0.0
-                    continue
-
-                a0 = (4.0 / 9.0 / np.pi) ** (1.0 / 3.0)
-                rs = (3.0 / rho[n]) ** (1.0 / 3.0)
-
-                vxp = -2.0 / (np.pi * a0 * rs)
-                exxp = 3.0 * vxp / 4.0
-
-                if self.SOC:
-                    a0 = 0.014 / rs
-                    te = np.sqrt(1.0 + a0 ** 2.0)
-                    be = np.log(a0 + te)
-                    vxp *= -0.5 + 1.5 * be / (a0 * te)
-                    exxp *= 1.0 - 1.5 * ((a0 * te - be) / a0 ** 2.0) ** 2.0
-
-                if rs > 1.0:
-                    te = 1.0 + (7.0 / 6.0) * 1.0529 * np.sqrt(rs) + (4.0 / 3.0) * 0.3334 * rs
-                    be = 1.0 + 1.0529 * np.sqrt(rs) + 0.3334 * rs
-                    ecp = -0.2846 / be
-                    vcp = -0.2846 * te / be ** 2.0
-                else:
-                    ecp = 2.0 * ((0.0311 + 0.002 * rs) * np.log(rs) - 0.048 - 0.0116 * rs)
-                    vcp = 2.0 * ((0.0311 + 2.0 / 3.0 * 0.002 * rs) * np.log(rs) - (0.048 + 0.0311 / 3.0) -
-                                 (2.0 / 3.0 * 0.0116 + 0.002 / 3.0) * rs)
-
-                vxc[n] = vxp + vcp
-                work[n] = exxp + ecp
+                work[n], vxc[n] = kernels.lda_point(rho[n])
 
             # Evaluate the XC energy.
             exc = -1.0 * basis.radin(ab.npts, ab.rab, (vxc - work) * self.rhorr)
@@ -579,7 +555,7 @@ class AllElectronAtom:
         elif self.theory == 'BLYP':
             rho /= 4.0 * np.pi  # The XC routines derive from a non-radial form
 
-            basis.real_derivative(ab, rho, grad)
+            basis.real_derivative(ab.npts, ab.rab, rho, grad)
 
             mod_grad = np.abs(grad)
 
@@ -592,7 +568,7 @@ class AllElectronAtom:
                     dv_dn[n] = 0.0
 
             # Add the gradient corrections to the potential.
-            basis.real_derivative(ab, dv_dn, grad)
+            basis.real_derivative(ab.npts, ab.rab, dv_dn, grad)
 
             grad[1:] += 2.0 * dv_dn[1:] / ab.r[1:]
 
@@ -605,8 +581,6 @@ class AllElectronAtom:
             io.abort('XC functional theory {} not known/implemented.'.format(self.theory))
 
         return exc
-
-
 
 
 
@@ -672,5 +646,11 @@ def cycle(currentParams: parameters.Params, currentCell:cell.UnitCell,
         print('| The atomic energy is {:>9.3f} {:>3}'.format(etot_eV, energy_label))
 
     print('\===============================================================->')
-    print('\nTime of run: {:>9.3f} s.'.format(time.time() - currentParams.start_time))
+
+
+
+
+
+
+
 

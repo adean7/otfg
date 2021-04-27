@@ -1,6 +1,41 @@
+import numba
 import numpy as np
 
 
+@numba.njit()
+def lda_point(d):   #lda_point(d, SOC):
+    if d / (4.0 * np.pi) <= 1.0E-21:
+        return 0.0, 0.0
+
+    a0 = (4.0 / 9.0 / np.pi) ** (1.0 / 3.0)
+    rs = (3.0 / d) ** (1.0 / 3.0)
+
+    vxp = -2.0 / (np.pi * a0 * rs)
+    exxp = 3.0 * vxp / 4.0
+
+    '''
+    if SOC:
+        a0 = 0.014 / rs
+        te = np.sqrt(1.0 + a0 ** 2.0)
+        be = np.log(a0 + te)
+        vxp *= -0.5 + 1.5 * be / (a0 * te)
+        exxp *= 1.0 - 1.5 * ((a0 * te - be) / a0 ** 2.0) ** 2.0
+    '''
+
+    if rs > 1.0:
+        te = 1.0 + (7.0 / 6.0) * 1.0529 * np.sqrt(rs) + (4.0 / 3.0) * 0.3334 * rs
+        be = 1.0 + 1.0529 * np.sqrt(rs) + 0.3334 * rs
+        ecp = -0.2846 / be
+        vcp = -0.2846 * te / be ** 2.0
+    else:
+        ecp = 2.0 * ((0.0311 + 0.002 * rs) * np.log(rs) - 0.048 - 0.0116 * rs)
+        vcp = 2.0 * ((0.0311 + 2.0 / 3.0 * 0.002 * rs) * np.log(rs) - (0.048 + 0.0311 / 3.0) -
+                     (2.0 / 3.0 * 0.0116 + 0.002 / 3.0) * rs)
+
+    return exxp + ecp, vxp + vcp
+
+
+@numba.njit()
 def pbe_point(d, dd):
     dtol = 1.0E-15
     thrd = 1.0 / 3.0
@@ -29,6 +64,7 @@ def pbe_point(d, dd):
     return exc, excd, excdd
 
 
+@numba.njit()
 def pbe_exch(rho, s):
     ax = -0.738558766382022405884230032680836
     um = 0.2195149727645171
@@ -59,6 +95,7 @@ def pbe_exch(rho, s):
     return ex, exd, exdd
 
 
+@numba.njit()
 def pbe_corr(rho, rs, t):
     bet = 0.06672455060314922
     gamma = 0.03109069086965489503494086371273
@@ -99,6 +136,7 @@ def pbe_corr(rho, rs, t):
     return ec, ecd, ecdd
 
 
+@numba.njit()
 def pbe_lsdcor(a, a1, b1, b2, b3, b4, rtrs):
     q0 = -2.0 * a * (1.0 + a1 * rtrs * rtrs)
     q1 = 2.0 * a * rtrs * (b1 + rtrs * (b2 + rtrs * (b3 + b4 * rtrs)))
@@ -112,6 +150,7 @@ def pbe_lsdcor(a, a1, b1, b2, b3, b4, rtrs):
     return gg, ggrs
 
 
+@numba.njit()
 def blyp_point(d, dd):
 
     ex_b88, exd_b88, exdd_b88 = b88_exchange_point(d, dd)
@@ -125,6 +164,7 @@ def blyp_point(d, dd):
     return exc, excd, excdd
 
 
+@numba.njit()
 def b88_exchange_point(d, dd):
     dtol = 1.0E-7
 
@@ -139,6 +179,7 @@ def b88_exchange_point(d, dd):
     return exc, excd, excdd
 
 
+@numba.njit()
 def sb88_exch(d, dd):
     b = 0.0042
     c = 0.930525736349100025
@@ -169,6 +210,7 @@ def sb88_exch(d, dd):
     return ex, exd, exdd
 
 
+@numba.njit()
 def lyp_correlation_point(d, dd):
     dtol = 1.0E-20
 
@@ -189,6 +231,7 @@ def lyp_correlation_point(d, dd):
     return exc, excd, excdd
 
 
+@numba.njit()
 def lyp_correlation_point_dl(rhoa1, sigmaaa1):
     tol = 1.0E-20
 

@@ -9,7 +9,6 @@ import scf
 
 import re
 
-
 def inquire(currentCell, model, soc):
 
     element = data.periodicTable.get(currentCell.speciesSymbol, None)

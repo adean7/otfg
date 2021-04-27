@@ -9,10 +9,12 @@
 
 # otfg modules.
 import cell
+import input_output as io
 import generate
 import otfg
 import parameters
 import pspot
+
 
 currentParams = parameters.get_arguments()
 
@@ -36,3 +38,4 @@ pseudopotential.allocate(currentParams, model)
 # Generate the pseudopotential.
 generate.generate_psp(currentParams, currentCell, model, pseudopotential)
 
+io.run_time_out(currentParams)

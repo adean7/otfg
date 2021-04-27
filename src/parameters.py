@@ -37,7 +37,7 @@ class Params:
             io.abort('Please enter an element.')
 
         if args.functional:
-            if args.functional.upper() == 'lda':
+            if args.functional.upper() == 'LDA':
                 self.xc_definition = 'LDA'
             elif args.functional.upper() == 'PBE':
                 self.xc_definition = 'PBE'
@@ -57,3 +57,6 @@ class Params:
             self.relativistic_treatment = 'sh'
 
         self.SOC = True if self.relativistic_treatment == 'dr' else self.SOC
+
+    def get_run_time(self):
+        return time.time() - self.start_time

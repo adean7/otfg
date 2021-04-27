@@ -1,12 +1,14 @@
 import math
+import numba
 import numpy as np
 
 import input_output as io
 
 
 
-def real_derivative(ab, f, df_dr):
-    for i in range(2, ab.npts-2):
+@numba.njit()
+def real_derivative(npts, rab, f, df_dr):
+    for i in range(2, npts-2):
         f1 = (f[i+1] - f[i-1]) / 2.0
         f2 = (f[i+2] - f[i-2]) / 4.0
         df_dr[i] = (4.0 * f1 - f2) / 3.0
@@ -17,10 +19,11 @@ def real_derivative(ab, f, df_dr):
     df_dr[-1] = 2.0 * df_dr[-2] - df_dr[-3]
 
     # Now multiply di/dr.
-    for i in range(ab.npts):
-        df_dr[i] /= ab.rab[i]
+    for i in range(npts):
+        df_dr[i] /= rab[i]
 
 
+@numba.njit()
 def r_second_derivative(npts, rab, r, f, df_dr, d2f_dr2):
     a = [-12.0, 108.0, -540.0,    0.0, 540.0, -108.0, 12.0]
     b = [  4.0, -54.0,  540.0, -980.0, 540.0,  -54.0,  4.0]
@@ -51,6 +54,7 @@ def r_second_derivative(npts, rab, r, f, df_dr, d2f_dr2):
     d2f_dr2[0:3] = r[0:3] * d2f_dr2[3] / r[3]
 
 
+@numba.njit()
 def radin(npts, rab, func, inter=None):
     # If an even number of logarithmic grid points are supplied, use all but the last.
     npts = npts if npts % 2 == 1 else npts-1
