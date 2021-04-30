@@ -148,7 +148,7 @@ class Pseudopotential:
         lmax = 4
 
         self.ID = 0
-        self.pseudise = np.zeros((10, 5))
+        self.pseudise = np.zeros((10, 5), dtype=bool)
 
         # The ionic charge of the pseudopotential.
         self.ionic_charge = 0.0
@@ -341,8 +341,11 @@ class Pseudopotential:
         # The ELNES augmentation term.
         self.bl_elnes_aug = np.zeros((model.num_core_projectors, model.num_bl_projectors))
 
-        # Just LDA and PBE for now.
+        # Theory.
         self.theory = currentParams.xc_definition
 
-        # Just Schroedinger for now.
+        # Atomic solver.
         self.atomic_solver = currentParams.relativistic_treatment
+
+        # Pseudopotential set.
+        self.set_ = currentParams.ps_set
