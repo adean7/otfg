@@ -388,8 +388,9 @@ class AllElectronAtom:
                     self.rhorr += self.occ[no,l] * self.orbr[:,no,l] ** 2.0
 
         work  = np.zeros(ab.npts)
-        work2 = np.zeros(ab.npts)
+        #work2 = np.zeros(ab.npts)
 
+        '''
         work[1:] = self.rhorr[1:] / ab.r[1:]
 
         basis.r_second_derivative(ab.npts, ab.rab, ab.r, f=work, df_dr=work2, d2f_dr2=self.kedrr)
@@ -404,6 +405,7 @@ class AllElectronAtom:
                 self.kedrr -= self.occ[no,l] * 2.0 * work * self.orbr[:,no,l]
 
         self.kedrr *= 0.25
+        '''
 
         # No boundary conditions in standalone so no need to put rho_sps onto rhorr_val.
 
