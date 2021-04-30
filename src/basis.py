@@ -8,10 +8,12 @@ import input_output as io
 
 @numba.njit()
 def real_derivative(npts, rab, f, df_dr):
+    twothird = 2.0 / 3.0
+
     for i in range(2, npts-2):
-        f1 = (f[i+1] - f[i-1]) / 2.0
-        f2 = (f[i+2] - f[i-2]) / 4.0
-        df_dr[i] = (4.0 * f1 - f2) / 3.0
+        f1 = (f[i+1] - f[i-1]) * twothird
+        f2 = (f[i+2] - f[i-2]) / 12.0
+        df_dr[i] = (f1 - f2)
 
     df_dr[1] = 2.0 * df_dr[2] - df_dr[3]
     df_dr[0] = 0.0 # By symmetry.
@@ -48,10 +50,10 @@ def r_second_derivative(npts, rab, r, f, df_dr, d2f_dr2):
         d2f_dr2[i] = sum2 / rab[i] ** 2.0 - sum1 / (r[i] + aa)
 
     df_dr[-3:] = 0.0
-    df_dr[0:3] = r[0:3] * df_dr[3] / r[3]
+    df_dr[:3] = r[:3] * df_dr[3] / r[3]
 
     d2f_dr2[-3:] = 0.0
-    d2f_dr2[0:3] = r[0:3] * d2f_dr2[3] / r[3]
+    d2f_dr2[:3] = r[:3] * d2f_dr2[3] / r[3]
 
 
 @numba.njit()
