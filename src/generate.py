@@ -1,3 +1,5 @@
+import numpy as np
+
 import basis
 import cell
 import data
@@ -22,9 +24,9 @@ def inquire(currentParams, currentCell, model):
     ab.init_ae_basis(Z)
 
     # Get the definition of the pseudopotential.
-    ps_set = '1'    # Corresponds to C19 pseudopotentials for now.
+    ps_set = currentParams.ps_set
 
-    definition = data.ps_def.get(currentCell.speciesSymbol + ps_set, None)
+    definition = data.ps_def.get(ps_set).get(currentCell.speciesSymbol)
     if definition is None:
         io.abort('Error finding pseudopotential definition for {}, set {}.'.format(currentCell.speciesSymbol, ps_set))
 
@@ -62,10 +64,7 @@ def inquire(currentParams, currentCell, model):
 
     for n in range(nref):
         indx = temp_def.find(':')
-        if indx == -1:
-            ctemp = temp_def[0:]
-        else:
-            ctemp = temp_def[0:indx]
+        ctemp = temp_def[0:] if indx == -1 else temp_def[0:indx]
 
         # Find out the angular momentum of this reference state
         l = int(ctemp[1])
@@ -82,11 +81,11 @@ def inquire(currentParams, currentCell, model):
         nb = 0
         ng = 0
 
-        for i in range(len(ctemp)):
-            if ctemp[i] == 'N': nb += 2 * l + 1 # Count the norm conserving projectors.
-            if ctemp[i] == 'U': nb += 2 * l + 1 # Count the ultrasoft projectors.
-            if ctemp[i] == 'H': ng += 2 * l + 1 # Count the norm conserving gamma projectors.
-            if ctemp[i] == 'G': ng += 2 * l + 1 # Count the ultrasoft gamma projectors.
+        for char in ctemp.strip():
+            if char == 'N': nb += 2 * l + 1 # Count the norm conserving projectors.
+            if char == 'U': nb += 2 * l + 1 # Count the ultrasoft projectors.
+            if char == 'H': ng += 2 * l + 1 # Count the norm conserving gamma projectors.
+            if char == 'G': ng += 2 * l + 1 # Count the ultrasoft gamma projectors.
 
         if nb == 0 and ctemp.find('P') == -1 and ctemp.find('L') == -1:
             nb = 2 * (2 * l + 1)
@@ -106,10 +105,7 @@ def inquire(currentParams, currentCell, model):
     nnmax = -1
     for n in range(nref):
         indx = temp_def.find(':')
-        if indx == -1:
-            ctemp = temp_def[0:]
-        else:
-            ctemp = temp_def[0:indx]
+        ctemp = temp_def[0:] if indx == -1 else temp_def[0:indx]
 
         # Find out the principal quantum number label
         nn = int(ctemp[0])
@@ -202,7 +198,7 @@ def generate_psp(currentParams: parameters.Params, currentCell    :  cell.UnitCe
     # Don't need this just yet as only have Schroedinger solver for now.
 
     # Define the pseudopotential to be generated.
-    #define(ab, aeat, pseudopotential)
+    #define(currentParams, currentCell, ab, aeat, pseudopotential)
 
     # Construct the pseudopotential.
     #construct(ab, aeat, pseudopotential)
@@ -216,8 +212,300 @@ def generate_psp(currentParams: parameters.Params, currentCell    :  cell.UnitCe
 
 
 
-def define(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
-    pass
+def define(currentParams: parameters.Params,
+           currentCell: cell.UnitCell,
+           ab: basis.AllElectronBasis,
+           aeat: scf.AllElectronAtom,
+           ps: pspot.Pseudopotential):
+
+    # Define comment characters.
+    comment = ['#', ';', '!', '^M']
+
+    # Set the working pseudopotential definition.
+    definition = currentCell.speciesPot
+
+    # We have the pseudopotential set in pseudopotential.set_
+
+    # Output testing files? - not doing this anyway.
+    testing = False if definition.find('[') == -1 else True
+
+    # Check if there are any pseudisation flags set.
+    if '(' in definition:
+        if ')' not in definition:
+            io.abort('Syntax error for pseudisation flags.')
+
+        ps.flags = definition[definition.find('(') + 1:definition.find(')')].strip()
+        definition = re.sub("[(].*[)]", "", definition)
+
+    if '{' in definition:
+        if '}' not in definition:
+            io.abort('Syntax error for config adjust.')
+        definition = re.sub("[{].*[}]", "", definition)
+
+    if '[' in definition:
+        if ']' not in definition:
+            io.abort('Syntax error for config adjust.')
+        definition = re.sub("[\[].*[]]", "", definition)
+
+    # Set the local channel.
+    ps.pv = False      # Don't do the polynomial fit by default.
+
+    indx = definition.find('|')
+    temp = definition[:indx]
+
+    if temp.find('=') != -1:
+        io.abort('Overide mode not implemented.')
+    else:
+        overide = False
+        ps.local_e = 0.0   # The energy.
+
+        try:
+            ps.local_l = abs(int(temp))
+        except Exception:
+            io.abort('Problem parsing definition 01.')
+
+        if temp.find('-') != -1:
+            ps.pv = True
+
+    ps.local_norm = 0      # Do not conserve the norm.
+
+    # Find out about the core radii - if only one is specified, use defaults
+    # - note, they may be specified on a projector by projector basis in addition.
+
+    # Count the number of "|" -- if 5, then use defaults.
+    n = definition.count('|')
+
+    # Read the core radii in from the definition string.
+    jndx = definition.find('|') + 1
+
+    if n == 5:      # Only one rc specified - use defaults.
+        indx = definition[jndx:].find('|')
+        try:
+            ps.local_rc = float(definition[jndx:jndx + indx])
+        except Exception:
+            io.abort('Problem parsing definition 02.')
+
+        temp_rc = ps.local_rc
+        ps.rinner = temp_rc * 0.7      # Default setting.
+        definition = definition[jndx+1+indx:]       # +1 to get rid of next |
+
+    elif n == 7:    # local_rc, beta_rc
+        indx = definition[jndx:].find('|')
+        try:
+            ps.local_rc = float(definition[jndx:jndx + indx])
+        except Exception:
+            io.abort('Problem parsing definition 03.')
+
+        jndx += 1 + indx
+
+        indx = definition[jndx:].find('|')
+        try:
+            temp_rc = float(definition[jndx:jndx+indx])
+        except Exception:
+            io.abort('Problem parsing definition 04.')
+
+        jndx += 1 + indx
+
+        indx = definition[jndx:].find('|')
+        try:
+            ps.rinner[0] = float(definition[jndx:jndx + indx])
+        except Exception:
+            io.abort('Problem parsing definition 05.')
+        for i in range(len(ps.rinner)):
+            ps.rinner[i] = ps.rinner[0]
+
+        definition = definition[jndx+1+indx:]  # +1 to get rid of next |
+
+    else:
+        io.abort('Unable to parse pseudopotential - incorrect number of "|".')
+
+    temp_rc2 = temp_rc      # Keep a copy of default beta_rc to use for the gamma projectors.
+
+    # Read in the definitions of COARSE, MEDIUM and FINE
+    # - note, the should be in atomic units (Ha).
+    indx = definition.find('|')
+
+    try:
+        ps.coarse = float(definition[:indx])
+    except:
+        io.abort('Problem parsing definition 06.')
+
+    jndx = 1 + indx
+    indx = definition[jndx:].find('|')
+
+    try:
+        ps.medium = float(definition[jndx:jndx + indx])
+    except:
+        io.abort('Problem parsing definition 07.')
+
+    jndx += 1 + indx
+    indx = definition[jndx:].find('|')
+
+    try:
+        ps.fine = float(definition[jndx:jndx + indx])
+    except:
+        io.abort('Problem parsing definition 08.')
+
+    definition = definition[jndx+1+indx:]  # +1 to get rid of next |
+
+    # Set PRECISE and EXTREME (we don't really know what EXTREME is).
+    ps.precise = max(1.03 * ps.fine + 1.57, 1.2 * ps.fine)
+    ps.extreme = 1.6 * ps.fine
+
+    # Set the cutoff energy.
+    if currentParams.basis_precision == 'COARSE':
+        currentParams.cut_off_energy = max(ps.coarse, currentParams.cut_off_energy)
+    elif currentParams.basis_precision == 'MEDIUM':
+        currentParams.cut_off_energy = max(ps.medium, currentParams.cut_off_energy)
+    elif currentParams.basis_precision == 'FINE':
+        currentParams.cut_off_energy = max(ps.fine, currentParams.cut_off_energy)
+    elif currentParams.basis_precision == 'PRECISE':
+        currentParams.cut_off_energy = max(ps.precise, currentParams.cut_off_energy)
+    elif currentParams.basis_precision == 'EXTREME':
+        currentParams.cut_off_energy = max(ps.extreme, currentParams.cut_off_energy)
+    else:
+        io.abort('Don\'t recognise basis precision.')
+
+    # Now read in the projector definitions.
+
+    # Count the number of reference states.
+    nref = definition.count(':') + 1
+
+    # Find out how many beta functions there are so the arrays can be allocated.
+    temp_def = definition
+    ps.num_beta = 0
+    for n in range(nref):
+        indx = temp_def.find(':')
+        ctemp = temp_def[:indx] if indx > -1 else temp_def
+        ctemp = ctemp.strip()
+        temp_def = temp_def[indx+1:]
+
+        nb = 0
+        for char in ctemp:
+            if char == 'N': nb += 1     # Count the norm conserving projectors.
+            if char == 'U': nb += 1     # Count the ultrasoft projectors.
+
+        nb = 2 if nb == 0 else nb
+
+        for char in ctemp:
+            if char == 'L': nb = 0      # Don't count the local channel.
+            if char == 'P': nb = 0      # Don't count the dummy channel.
+
+        ps.num_beta += nb
+
+    # Allocate the beta arrays.
+    ps.beta_l = np.zeros(ps.num_beta, dtype=int)
+    ps.beta_e = np.zeros(ps.num_beta)
+    ps.beta_rc = np.zeros(ps.num_beta)
+    ps.beta_delta = np.zeros(ps.num_beta)
+    ps.beta_nrc = np.zeros(ps.num_beta, dtype=int)
+    ps.beta_norm = np.zeros(ps.num_beta, dtype=int)
+    ps.beta_scheme = np.zeros(ps.num_beta, dtype=str)
+
+    # Set the beta arrays.
+    temp_def = definition
+    nbb = 0
+
+    for n in range(nref):
+        indx = temp_def.find(':')
+        ctemp = temp_def[:indx] if indx > -1 else temp_def
+        ctemp = ctemp.strip()
+        temp_def = temp_def[indx+1:]
+
+        try:
+            no, l = int(ctemp[0]), int(ctemp[1])
+        except Exception:
+            print('Problem parsing definition 09.')
+
+        ps.pseudise[no-1-l,l] = True
+
+        try:
+            if ctemp[2] == 'P':
+                continue        # Just pseudise - no projectors etc.
+        except IndexError:
+            pass
+
+        if len(ctemp) > 2 and ctemp[2] == 'L':
+            if l != ps.local_l:
+                io.abort('Local channel conflict.')
+
+            if not overide:
+                ps.local_e = aeat.eval[no-1-l,l]
+
+            ps.local_norm = 0 if ctemp[3] == 'G' else 1
+
+        else:
+            ps.beta_e[nbb+1] = aeat.eval[no-1-l,l]
+
+            nb = 0
+            for i, char_i in enumerate(ctemp):
+                if char_i == 'N' or char_i == 'U':
+                    nb += 1     # Count the projectors.
+
+                    for j, char_j in enumerate(ctemp[i:]):
+                        if char_j in ['N', 'U', 'H', 'G']:
+                            break
+
+                    print(i, j, ctemp)
+                    ctemp2 = ctemp[i:j]
+                    print(ctemp2)
+                    exit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def construct(ab: basis.AllElectronBasis, aeat: scf.AllElectronAtom, pseudopotential: pspot.Pseudopotential):
     pass
