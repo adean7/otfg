@@ -532,7 +532,7 @@ class AllElectronAtom:
         elif self.theory == 'PBE':
             rho /= 4.0 * np.pi      # The XC routines derive from a non-radial form
 
-            basis.real_derivative(ab, rho, grad)
+            basis.real_derivative(ab.npts, ab.rab, rho, grad)
 
             mod_grad = np.abs(grad)
 
@@ -545,7 +545,7 @@ class AllElectronAtom:
                     dv_dn[n] = 0.0
 
             # Add the gradient corrections to the potential.
-            basis.real_derivative(ab, dv_dn, grad)
+            basis.real_derivative(ab.npts, ab.rab, dv_dn, grad)
 
             grad[1:] += 2.0 * dv_dn[1:] / ab.r[1:]
 
