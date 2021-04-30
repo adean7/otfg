@@ -9,7 +9,7 @@ import scf
 
 import re
 
-def inquire(currentCell, model, soc):
+def inquire(currentParams, currentCell, model):
 
     element = data.periodicTable.get(currentCell.speciesSymbol, None)
     if element is None:
@@ -91,7 +91,7 @@ def inquire(currentCell, model, soc):
         if nb == 0 and ctemp.find('P') == -1 and ctemp.find('L') == -1:
             nb = 2 * (2 * l + 1)
 
-        if soc and l > 0: # Double for j
+        if currentParams.SOC and l > 0: # Double for j
             tot_num_projectors    += 2 * nb
             tot_num_bl_projectors += 2 * ng
         else:
@@ -161,6 +161,9 @@ def inquire(currentCell, model, soc):
                       Z,
                       ab,
                       cfg_occ)
+
+    # Update cell ionic charge.
+    currentCell.ionicCharge = model.ionic_charge
 
 
 

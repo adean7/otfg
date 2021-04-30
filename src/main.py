@@ -16,18 +16,17 @@ import parameters
 import pspot
 
 
+# Get the parameters for the calculation.
 currentParams = parameters.get_arguments()
 
+# Get the current unit cell.
 currentCell = cell.UnitCell(currentParams.element)
+
+# Create a class to hold all the information
 model = otfg.Model()
 
-soc = False # No spin orbit coupling for now.
-
 # Work out what pseudopotential we are trying to create.
-generate.inquire(currentCell, model, soc)
-
-# Update cell ionic charge.
-currentCell.ionicCharge = model.ionic_charge
+generate.inquire(currentParams, currentCell, model)
 
 # Initialise pseudopotential.
 pseudopotential = pspot.Pseudopotential()
@@ -38,4 +37,4 @@ pseudopotential.allocate(currentParams, model)
 # Generate the pseudopotential.
 generate.generate_psp(currentParams, currentCell, model, pseudopotential)
 
-io.run_time_out(currentParams)
+io.run_time(currentParams)

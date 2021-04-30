@@ -58,5 +58,10 @@ class Params:
 
         self.SOC = True if self.relativistic_treatment == 'dr' else self.SOC
 
+        # No SOC for now.
+        if self.SOC:
+            print('Warning: setting SOC to False as not implemented yet.')
+            self.SOC = False
+
     def get_run_time(self):
         return time.time() - self.start_time
